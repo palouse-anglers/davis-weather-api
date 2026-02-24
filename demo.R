@@ -105,7 +105,9 @@ get_weatherlink_current <- function(uuids) {
       resp_body_json()
     
     # Flatten sensors for this station
-    map_dfr(resp$sensors, function(sensor) {
+    map_dfr(resp$sensors %>%
+      keep(~.x$sensor_type==31),
+    function(sensor) {
       sensor_data <- sensor$data[[1]]
       
       if (is.null(sensor_data) || !is.list(sensor_data)) {
@@ -140,7 +142,7 @@ get_weatherlink_current <- function(uuids) {
         ))
       }
       
-      tibble(
+      df <- tibble(
         station_uuid  = uuid,
         lsid          = sensor$lsid,
         sensor_type   = sensor$sensor_type,
@@ -168,12 +170,13 @@ get_weatherlink_current <- function(uuids) {
         wind_dir       = safe_get(sensor_data, "wind_dir"),
         wind_speed     = safe_get(sensor_data, "wind_speed"),
         wet_bulb       = safe_get(sensor_data, "wet_bulb")
-      ) %>%
-  mutate(
-    realts = as.POSIXct(ts + tz_offset, origin = "1970-01-01", tz = "UTC")
-  ) %>%
-  relocate(realts, .before = ts) %>%
-  filter(sensor_type==31)
+      ) 
+      
+  df %>%
+mutate(
+realts = as.POSIXct(ts + tz_offset, origin = "1970-01-01", tz = "UTC")) %>% 
+relocate(realts, .before = ts) 
+     
     })
   })
 }
@@ -187,7 +190,8 @@ bl <- stations_df %>%
 
 
 
-stations_df %>%
+get_weatherlink_current(
+  stations_df %>%
   filter(name=="Bluewood Lodge") %>%
-  pull(uuid) %>%
-  get_current_conditions()
+  pull(uuid) 
+ )
